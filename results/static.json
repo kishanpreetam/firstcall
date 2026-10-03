@@ -1,0 +1,36 @@
+[
+  {
+    "company": "stripe",
+    "docs_status": 200,
+    "docs_html_kb": 1347.3,
+    "docs_text_chars": 6766,
+    "docs_js_shell": false,
+    "llms_txt_url": "https://docs.stripe.com/llms.txt",
+    "llms_txt_kb": 90.0,
+    "llms_txt_links": 511,
+    "llms_full_txt_kb": null,
+    "markdown_variant": "Accept: text/markdown (https://docs.stripe.com/get-started/development-environment)",
+    "robots_blocks": [],
+    "openapi_hint": null,
+    "mcp_url": "https://mcp.stripe.com",
+    "mcp_probe": "found (auth required) - OAuth",
+    "notes": []
+  },
+  {
+    "company": "linear",
+    "docs_status": 200,
+    "docs_html_kb": 446.4,
+    "docs_text_chars": 7392,
+    "docs_js_shell": false,
+    "llms_txt_url": "https://linear.app/llms.txt",
+    "llms_txt_kb": 10.2,
+    "llms_txt_links": 157,
+    "llms_full_txt_kb": null,
+    "markdown_variant": "Accept: text/markdown (https://linear.app/developers/how-to-upload-a-file-to-linear)",
+    "robots_blocks": [],
+    "openapi_hint": null,
+    "mcp_url": "https://mcp.linear.app/mcp",
+    "mcp_probe": "found (auth required) - OAuth",
+    "notes": []
+  }
+]

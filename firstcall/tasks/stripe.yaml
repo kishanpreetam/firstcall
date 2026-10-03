@@ -1,0 +1,31 @@
+# Three first-integration tasks, easiest to hardest. Each is checked by
+# reading Stripe's API afterwards, never by trusting the agent's summary.
+env: [STRIPE_SECRET_KEY]
+mcp_auth_env: STRIPE_SECRET_KEY
+llms_txt: https://docs.stripe.com/llms.txt
+
+tasks:
+  - id: customer
+    verifier: verify_customer
+    prompt: |
+      Create a Stripe customer with:
+      - email: firstcall+{run_id}@example.com
+      - name: FirstCall {run_id}
+      - metadata: firstcall_run = {run_id}
+
+  - id: subscription
+    verifier: verify_subscription
+    prompt: |
+      Set up a monthly subscription in Stripe test mode:
+      1. Create a product named "FirstCall Pro {run_id}" with a recurring monthly price of 12.00 USD.
+      2. Create a customer with email firstcall+{run_id}-sub@example.com and metadata firstcall_run = {run_id}.
+      3. Subscribe that customer to the price, paying with Stripe's test card payment method pm_card_visa.
+      The subscription must end up active, with its first invoice paid.
+
+  - id: partial-refund
+    verifier: verify_partial_refund
+    prompt: |
+      In Stripe test mode:
+      1. Create a customer with email firstcall+{run_id}-pay@example.com and metadata firstcall_run = {run_id}.
+      2. Charge that customer 25.00 USD with a PaymentIntent confirmed with Stripe's test card payment method pm_card_visa. Put firstcall_run = {run_id} in the PaymentIntent's metadata.
+      3. Refund 10.00 USD of that payment, leaving 15.00 USD captured.

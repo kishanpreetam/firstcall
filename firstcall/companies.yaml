@@ -1,0 +1,96 @@
+# Candidate companies for the benchmark.
+#
+# docs:  root of the developer docs (where an agent would start reading)
+# mcp:   candidate URL(s) for the company's official remote MCP server.
+#        Probed by the static checker; a 404 or DNS failure means "not found".
+# Only public, documented endpoints belong here.
+
+stripe:
+  name: Stripe
+  docs: https://docs.stripe.com
+  mcp: [https://mcp.stripe.com]
+
+hubspot:
+  name: HubSpot
+  docs: https://developers.hubspot.com/docs
+  mcp: [https://mcp.hubspot.com]
+
+klaviyo:
+  name: Klaviyo
+  docs: https://developers.klaviyo.com/en
+  mcp: [https://mcp.klaviyo.com/mcp]
+
+twilio:
+  name: Twilio
+  docs: https://www.twilio.com/docs
+  mcp: []
+
+notion:
+  name: Notion
+  docs: https://developers.notion.com
+  mcp: [https://mcp.notion.com/mcp]
+
+linear:
+  name: Linear
+  docs: https://linear.app/developers
+  mcp: [https://mcp.linear.app/mcp]
+
+supabase:
+  name: Supabase
+  docs: https://supabase.com/docs
+  mcp: [https://mcp.supabase.com/mcp]
+
+cloudflare:
+  name: Cloudflare
+  docs: https://developers.cloudflare.com
+  mcp: [https://docs.mcp.cloudflare.com/mcp]
+
+datadog:
+  name: Datadog
+  docs: https://docs.datadoghq.com
+  mcp: [https://mcp.datadoghq.com/api/unstable/mcp-server/mcp]
+
+resend:
+  name: Resend
+  docs: https://resend.com/docs
+  mcp: []
+
+pinecone:
+  name: Pinecone
+  docs: https://docs.pinecone.io
+  mcp: []
+
+asana:
+  name: Asana
+  docs: https://developers.asana.com/docs
+  mcp: [https://mcp.asana.com/sse]
+
+square:
+  name: Square
+  docs: https://developer.squareup.com/docs
+  mcp: [https://mcp.squareup.com/sse]
+
+paypal:
+  name: PayPal
+  docs: https://developer.paypal.com
+  mcp: [https://mcp.paypal.com/mcp]
+
+shopify:
+  name: Shopify
+  docs: https://shopify.dev/docs
+  mcp: []
+
+plaid:
+  name: Plaid
+  docs: https://plaid.com/docs
+  mcp: []
+
+airtable:
+  name: Airtable
+  docs: https://airtable.com/developers/web/api/introduction
+  mcp: []
+
+atlassian:
+  name: Atlassian
+  docs: https://developer.atlassian.com
+  mcp: [https://mcp.atlassian.com/v1/sse]
