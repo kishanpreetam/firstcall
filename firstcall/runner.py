@@ -1,10 +1,15 @@
-"""Runs (company x task x condition x repetition) and stores one JSON per run."""
+"""Runs (company x task x condition x repetition) and stores one JSON per run.
+
+Fails closed: nothing runs unless the self-test passes and every credential
+is test-mode. Credentials are redacted from everything written to disk.
+"""
 
 from __future__ import annotations
 
 import json
 import os
 import secrets
+import shutil
 import statistics
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,13 +19,13 @@ from threading import Lock
 
 import anthropic
 
-from .agent import DEFAULT_MODEL, run_agent
+from .agent import DEFAULT_MODEL, Step, run_agent
+from .paths import RESULTS, ROOT
 from .registry import Company, Task
+from .safety import Redactor, UnsafeConfig, check_test_keys
 from .sandbox import Sandbox
+from .selftest import run_selftest
 from .verify import get_verifier
-
-ROOT = Path(__file__).resolve().parent.parent
-RESULTS = ROOT / "results"
 
 
 def load_env(path: Path = ROOT / ".env") -> dict[str, str]:
@@ -47,6 +52,21 @@ class BudgetExceeded(Exception):
     pass
 
 
+def preflight(jobs: list[Job], env: dict[str, str]) -> None:
+    """Every check that must pass before any model-written code runs."""
+    if not run_selftest(verbose=False):
+        raise UnsafeConfig("safety self-test failed; run `python -m firstcall selftest` for details")
+    if not env.get("ANTHROPIC_API_KEY"):
+        raise UnsafeConfig("ANTHROPIC_API_KEY is not set in .env")
+    for company in {job.company.key: job.company for job in jobs}.values():
+        missing = [k for k in company.env if not env.get(k)]
+        if missing:
+            raise UnsafeConfig(f"{company.key}: set {', '.join(missing)} in .env")
+        check_test_keys(company.key, company.test_key_patterns, env, company.env)
+        if not company.allowed_hosts:
+            raise UnsafeConfig(f"{company.key}: no allowed_hosts in its tasks file; the agent's code would have no network")
+
+
 def run_jobs(
     jobs: list[Job],
     *,
@@ -57,8 +77,8 @@ def run_jobs(
     budget_usd: float = 5.0,
 ) -> list[dict]:
     env = load_env()
-    if "ANTHROPIC_API_KEY" in env:
-        os.environ.setdefault("ANTHROPIC_API_KEY", env["ANTHROPIC_API_KEY"])
+    preflight(jobs, env)
+    os.environ["ANTHROPIC_API_KEY"] = env["ANTHROPIC_API_KEY"]
     client = anthropic.Anthropic(max_retries=4)
 
     spent = 0.0
@@ -70,20 +90,29 @@ def run_jobs(
         with lock:
             if spent >= budget_usd:
                 raise BudgetExceeded(f"budget of ${budget_usd:.2f} reached")
-        missing = [k for k in job.company.env if not env.get(k)]
-        if missing:
-            raise RuntimeError(f"{job.company.key}: set {', '.join(missing)} in .env")
+
+        company_secrets = {k: env[k] for k in job.company.env}
+        all_secrets = company_secrets | {"ANTHROPIC_API_KEY": env["ANTHROPIC_API_KEY"]}
+        redactor = Redactor(all_secrets)
 
         run_id = "r" + secrets.token_hex(4)
         out_dir = RESULTS / "runs" / job.company.key / job.task.id / job.condition
         work = RESULTS / "work" / run_id
-        sandbox = Sandbox(work, {k: env[k] for k in job.company.env} | {"FIRSTCALL_RUN_ID": run_id})
+        sandbox = Sandbox(work, company_secrets | {"FIRSTCALL_RUN_ID": run_id}, job.company.allowed_hosts)
 
         mcp_token = env.get(job.company.mcp_auth_env) if job.company.mcp_auth_env else None
         mcp_url = job.company.mcp[0] if job.company.mcp else None
-        trace = run_agent(
-            client, job.company, job.task, job.condition, run_id, sandbox,
-            model=model, effort=effort, max_turns=max_turns, mcp_token=mcp_token, mcp_url=mcp_url,
+        try:
+            trace = run_agent(
+                client, job.company, job.task, job.condition, run_id, sandbox,
+                model=model, effort=effort, max_turns=max_turns, mcp_token=mcp_token, mcp_url=mcp_url,
+                secret_values=tuple(all_secrets.values()),
+            )
+        finally:
+            sandbox.close()
+            shutil.rmtree(work, ignore_errors=True)  # the code it ran is kept, redacted, in the trace
+        trace.steps.extend(
+            Step(trace.turns, "note", content=f"firewall blocked {b['target']}: {b['reason']}") for b in sandbox.blocked_egress
         )
 
         verifier = get_verifier(job.company.key, job.task.verifier)
@@ -92,7 +121,7 @@ def run_jobs(
         except Exception as exc:  # a verifier crash is a harness bug, not an agent failure
             passed, checks, notes = False, {}, {"verifier_error": f"{type(exc).__name__}: {exc}"}
 
-        record = trace.to_dict() | {"passed": passed, "checks": checks, "verify_notes": notes}
+        record = redactor.obj(trace.to_dict() | {"passed": passed, "checks": checks, "verify_notes": notes})
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / f"{run_id}.json").write_text(json.dumps(record, indent=2, default=str))
         with lock:

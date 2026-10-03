@@ -122,6 +122,7 @@ class RunTrace:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     pages_fetched: list[str] = field(default_factory=list)
+    blocked_fetches: int = 0  # fetch_url calls refused by a safety guard
     python_calls: int = 0
     mcp_calls: int = 0
     seconds: float = 0.0
@@ -154,6 +155,7 @@ def run_agent(
     max_turns: int = 40,
     mcp_token: str | None = None,
     mcp_url: str | None = None,
+    secret_values: tuple[str, ...] = (),
 ) -> RunTrace:
     trace = RunTrace(run_id=run_id, company=company.key, task=task.id, condition=condition, model=model, effort=effort)
     started = time.monotonic()
@@ -226,7 +228,7 @@ def run_agent(
 
         results = []
         for block in tool_uses:
-            output, is_error = _execute(block.name, block.input, trace, turn, sandbox)
+            output, is_error = _execute(block.name, block.input, trace, turn, sandbox, secret_values)
             results.append({"type": "tool_result", "tool_use_id": block.id, "content": output, "is_error": is_error})
             if block.name == "done":
                 trace.finished = True
@@ -241,11 +243,13 @@ def run_agent(
     return trace
 
 
-def _execute(name: str, args: dict, trace: RunTrace, turn: int, sandbox: Sandbox) -> tuple[str, bool]:
+def _execute(name: str, args: dict, trace: RunTrace, turn: int, sandbox: Sandbox, secret_values: tuple[str, ...]) -> tuple[str, bool]:
     trace.steps.append(Step(turn, "tool_call", name=name, content=args.get("code") or args.get("url") or args.get("summary", "")))
     if name == "fetch_url":
-        page = fetch.get(args["url"])
+        page = fetch.get(args["url"], secrets=secret_values)
         trace.pages_fetched.append(args["url"])
+        if page.blocked:
+            trace.blocked_fetches += 1
         if page.error or not page.ok:
             out = f"Fetch failed: {page.error or f'HTTP {page.status}'}"
             trace.steps.append(Step(turn, "tool_result", name=name, content=out, meta={"status": page.status}))

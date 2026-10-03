@@ -1,6 +1,11 @@
 # Three first-integration tasks, easiest to hardest. Each is checked by
 # reading Stripe's API afterwards, never by trusting the agent's summary.
 env: [STRIPE_SECRET_KEY]
+# Runs refuse to start unless the key is test-mode: no real money can move.
+test_key_patterns:
+  STRIPE_SECRET_KEY: "^(sk|rk)_test_[A-Za-z0-9]+$"
+# The agent's code can reach these hosts and nothing else.
+allowed_hosts: [api.stripe.com, files.stripe.com]
 mcp_auth_env: STRIPE_SECRET_KEY
 llms_txt: https://docs.stripe.com/llms.txt
 

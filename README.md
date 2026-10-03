@@ -22,6 +22,7 @@ Every run is traced: the pages the agent read, the code it ran, the API errors i
 python3 -m venv .venv && .venv/bin/pip install anthropic requests beautifulsoup4 markdownify pyyaml
 cp .env.example .env          # ANTHROPIC_API_KEY + test-mode company keys
 
+.venv/bin/python -m firstcall selftest                    # proves every safety guard works
 .venv/bin/python -m firstcall static                      # readiness signals, no keys needed
 .venv/bin/python -m firstcall run stripe --task customer --reps 1 --budget 1
 .venv/bin/python -m firstcall report
@@ -50,9 +51,27 @@ cp .env.example .env          # ANTHROPIC_API_KEY + test-mode company keys
 
 ## Safety
 
-- Use **test-mode keys only**.
-- The agent's code runs in a separate process. That process gets its own working directory, a minimal environment and a 90-second timeout. This keeps runs apart, but it is not a security boundary.
-- Run the benchmark on a machine where you're comfortable executing code the model writes.
+The agent writes code, and FirstCall runs that code on your machine, so the harness is locked down in layers. Before every batch it proves each layer works with `python -m firstcall selftest`, and it refuses to start if anything fails.
+
+- **Live keys are refused.** Credentials must match the company's test-mode pattern, for example `sk_test_`.
+- **OS sandbox (macOS Seatbelt).** The agent's code can only write inside its own run folder, can't read your home directory (`.env`, `~/.ssh`, cloud credentials), and can't start programs.
+- **Egress firewall.** There's no direct internet access and no DNS. The only way out is a proxy that allows HTTPS to the company's API hosts, and nothing else.
+- **Safe fetching.**
+  - No localhost, private networks or cloud metadata addresses.
+  - No URLs that carry a credential.
+  - `robots.txt` is respected, with a delay between requests to the same host.
+- **Redaction.** Credentials are scrubbed from every saved trace.
+- **Limits:**
+  - 90 seconds per script;
+  - 60 seconds of CPU and 50 MB per file;
+  - 40 turns per run;
+  - a dollar budget per batch.
+
+Details and known limitations are in [SECURITY.md](SECURITY.md). How runs behave and how results get published (companies see their results first, corrections, no affiliation) is in [RESPONSIBLE_USE.md](RESPONSIBLE_USE.md).
+
+## License
+
+MIT. See [LICENSE](LICENSE).
 
 ## Related work
 
