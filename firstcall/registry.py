@@ -27,6 +27,7 @@ class Company:
     env: list[str] = field(default_factory=list)  # credentials the agent's code may use
     test_key_patterns: dict[str, str] = field(default_factory=dict)  # env var -> regex a test-mode credential must match
     allowed_hosts: list[str] = field(default_factory=list)  # the only hosts the agent's code may connect to
+    test_account_check: str | None = None  # verifier function that confirms the credential is a test account
     mcp_auth_env: str | None = None  # env var holding a bearer token for the MCP server
     llms_txt: str | None = None
     tasks: list[Task] = field(default_factory=list)
@@ -43,6 +44,7 @@ def load_companies() -> list[Company]:
             company.env = t.get("env", [])
             company.test_key_patterns = t.get("test_key_patterns", {})
             company.allowed_hosts = t.get("allowed_hosts", [])
+            company.test_account_check = t.get("test_account_check")
             company.mcp_auth_env = t.get("mcp_auth_env")
             company.llms_txt = t.get("llms_txt")
             company.tasks = [Task(**task) for task in t["tasks"]]

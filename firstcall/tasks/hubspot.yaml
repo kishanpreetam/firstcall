@@ -1,0 +1,39 @@
+# Three first-integration tasks against HubSpot's CRM, easiest to hardest.
+# Each is checked by reading HubSpot's API afterwards.
+env: [HUBSPOT_ACCESS_TOKEN]
+# HubSpot tokens don't say whether they belong to a test account, so the
+# pattern only checks the format. The real guard is test_account_check: before
+# any run, the harness asks HubSpot for the account type and refuses anything
+# that isn't a developer test account or a sandbox.
+test_key_patterns:
+  HUBSPOT_ACCESS_TOKEN: "^pat-(na|eu|ap)[0-9]+-[0-9a-fA-F-]{20,}$"
+test_account_check: test_account
+allowed_hosts: [api.hubapi.com, api.hubspot.com]
+# HubSpot's MCP server requires OAuth, so the mcp condition isn't available yet.
+llms_txt: https://developers.hubspot.com/docs/llms.txt
+
+tasks:
+  - id: contact
+    verifier: verify_contact
+    prompt: |
+      Create a HubSpot contact with:
+      - email: firstcall+{run_id}@example.com
+      - first name: FirstCall
+      - last name: {run_id}
+      - job title: Benchmark run {run_id}
+
+  - id: company-association
+    verifier: verify_company_association
+    prompt: |
+      In HubSpot:
+      1. Create a company named "FirstCall {run_id}" with the domain firstcall-{run_id}.example.com.
+      2. Create a contact with email firstcall+{run_id}-co@example.com.
+      3. Associate the contact with the company.
+
+  - id: deal-pipeline
+    verifier: verify_deal_pipeline
+    prompt: |
+      In HubSpot:
+      1. Create a deal named "FirstCall {run_id} pilot" with an amount of 1200, in the default sales pipeline, at the "Appointment scheduled" stage.
+      2. Create a contact with email firstcall+{run_id}-deal@example.com and associate it with the deal.
+      3. Move the deal to the "Closed won" stage.

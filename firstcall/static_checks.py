@@ -219,9 +219,16 @@ def _disallowed(robots: str, agent: str, path: str) -> bool:
 
 
 def run(keys: list[str] | None, out_dir: Path) -> list[StaticReport]:
-    companies = [c for c in load_companies() if not keys or c.key in keys]
+    registry = load_companies()
+    companies = [c for c in registry if not keys or c.key in keys]
     with ThreadPoolExecutor(max_workers=8) as pool:
         reports = list(pool.map(check, companies))
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "static.json").write_text(json.dumps([asdict(r) for r in reports], indent=2))
+    out = out_dir / "static.json"
+    # A partial run updates its companies and keeps everyone else's results.
+    merged = {r["company"]: r for r in json.loads(out.read_text())} if keys and out.exists() else {}
+    merged.update({r.company: asdict(r) for r in reports})
+    order = [c.key for c in registry]
+    rows = sorted(merged.values(), key=lambda r: order.index(r["company"]) if r["company"] in order else len(order))
+    out.write_text(json.dumps(rows, indent=2))
     return reports

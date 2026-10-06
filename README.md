@@ -14,7 +14,7 @@ FirstCall gives an AI agent a real integration task against a company's real API
 
 Every run is traced: the pages the agent read, the code it ran, the API errors it hit, and its tokens, cost and time. When an agent fails, the trace shows which doc page or error sent it the wrong way.
 
-> Status: v0.1. The harness is done and Stripe's tasks are written. Static readiness signals are collected for 18 companies. The first agent results are next.
+> Status: v0.1. The harness is done, and tasks are written for Stripe and HubSpot. Static readiness signals are collected for 18 companies. The first agent results are next.
 
 ## Quick start
 
@@ -36,10 +36,15 @@ cp .env.example .env          # ANTHROPIC_API_KEY + test-mode company keys
   - `done`: ends the run.
 
   No web search, so the agent works from the company's docs alone. Each run is a fresh conversation, capped at 40 turns.
-- **Tasks:** three per company, written as first integrations of increasing difficulty. For Stripe:
-  - create a tagged customer;
-  - set up a product, a monthly price and an active subscription with its first invoice paid;
-  - charge with a PaymentIntent, then partially refund it.
+- **Tasks:** three per company, written as first integrations of increasing difficulty.
+  - Stripe:
+    - create a tagged customer;
+    - set up a product, a monthly price and an active subscription with its first invoice paid;
+    - charge with a PaymentIntent, then partially refund it.
+  - HubSpot:
+    - create a contact;
+    - create a company and associate a contact with it;
+    - create a deal in the default pipeline, associate a contact, and move the deal to Closed won.
 - **Verification:** every task tags what it creates with a run id. A verifier then queries the company's API and checks each requirement. The agent's own summary is never trusted.
 - **Fallbacks:** requests opt into server-side refusal fallbacks. Any run where another model took over is excluded from pass rates and counted separately.
 - **Static signals:** `python -m firstcall static` records:
@@ -53,7 +58,7 @@ cp .env.example .env          # ANTHROPIC_API_KEY + test-mode company keys
 
 The agent writes code, and FirstCall runs that code on your machine, so the harness is locked down in layers. Before every batch it proves each layer works with `python -m firstcall selftest`, and it refuses to start if anything fails.
 
-- **Live keys are refused.** Credentials must match the company's test-mode pattern, for example `sk_test_`.
+- **Live keys are refused.** Credentials must match the company's test-mode pattern, for example `sk_test_`. Some companies' keys don't show test mode; for those, FirstCall asks the company's API before every run and refuses anything but a test account. For example, it refuses any HubSpot account that isn't `DEVELOPER_TEST` or `SANDBOX`.
 - **OS sandbox (macOS Seatbelt).** The agent's code can only write inside its own run folder, can't read your home directory (`.env`, `~/.ssh`, cloud credentials), and can't start programs.
 - **Egress firewall.** There's no direct internet access and no DNS. The only way out is a proxy that allows HTTPS to the company's API hosts, and nothing else.
 - **Safe fetching.**

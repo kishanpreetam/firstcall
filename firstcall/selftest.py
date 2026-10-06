@@ -70,6 +70,29 @@ def run_selftest(verbose: bool = True) -> bool:
     except UnsafeConfig:
         results.append(("credential without a test pattern refused", True, ""))
 
+    # Companies whose keys don't reveal test mode are checked through their API.
+    # The HubSpot guard must refuse a real account, and refuse when it can't tell.
+    import requests
+
+    from .verify import hubspot
+
+    real_get = hubspot._get
+    try:
+        hubspot._get = lambda env, path: {"accountType": "STANDARD"}
+        refuses_real = not hubspot.test_account({"HUBSPOT_ACCESS_TOKEN": "x"})[0]
+        hubspot._get = lambda env, path: {"accountType": "DEVELOPER_TEST"}
+        accepts_test = hubspot.test_account({"HUBSPOT_ACCESS_TOKEN": "x"})[0]
+
+        def unreachable(env, path):
+            raise requests.ConnectionError("offline")
+
+        hubspot._get = unreachable
+        refuses_unknown = not hubspot.test_account({"HUBSPOT_ACCESS_TOKEN": "x"})[0]
+    finally:
+        hubspot._get = real_get
+    results.append(("HubSpot guard refuses real accounts", refuses_real and accepts_test, ""))
+    results.append(("HubSpot guard refuses when it can't confirm", refuses_unknown, ""))
+
     # Redaction.
     red = Redactor({"STRIPE_SECRET_KEY": FAKE_KEY}).obj({"a": f"key={FAKE_KEY}", "b": ["sk-ant-api03-" + "x" * 30]})
     results.append(("credentials redacted from logs", "SELFTEST" not in json.dumps(red) and "sk-ant" not in json.dumps(red), json.dumps(red)))

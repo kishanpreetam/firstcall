@@ -65,6 +65,12 @@ def preflight(jobs: list[Job], env: dict[str, str]) -> None:
         check_test_keys(company.key, company.test_key_patterns, env, company.env)
         if not company.allowed_hosts:
             raise UnsafeConfig(f"{company.key}: no allowed_hosts in its tasks file; the agent's code would have no network")
+        if company.test_account_check:
+            ok, detail = get_verifier(company.key, company.test_account_check)(env)
+            if not ok:
+                raise UnsafeConfig(f"{company.key}: {detail}")
+        if any(j.condition == "mcp" for j in jobs if j.company.key == company.key) and not company.mcp_auth_env:
+            raise UnsafeConfig(f"{company.key}: the mcp condition isn't available (no token-based MCP access configured)")
 
 
 def run_jobs(
