@@ -92,4 +92,4 @@ MIT. See [LICENSE](LICENSE).
 
 ---
 
-Built by [Kishan Kommana](https://linkedin.com/in/kishan-preetam-kommana).
+Built by [Kishan Preetam Kommana](https://linkedin.com/in/kishan-preetam-kommana).
